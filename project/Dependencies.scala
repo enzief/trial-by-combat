@@ -39,8 +39,9 @@ object Dependencies {
   object Http4s {
     val version: String = "0.18.15"
 
-    val blaze: ModuleID = "org.http4s" %% "http4s-blaze-server" % version
-    val circe: ModuleID = "org.http4s" %% "http4s-circe"        % version
-    val dsl: ModuleID   = "org.http4s" %% "http4s-dsl"          % version
+    val blaze: ModuleID  = "org.http4s" %% "http4s-blaze-server" % version
+    val client: ModuleID = "org.http4s" %% "http4s-blaze-client" % version
+    val circe: ModuleID  = "org.http4s" %% "http4s-circe"        % version
+    val dsl: ModuleID    = "org.http4s" %% "http4s-dsl"          % version
   }
 }

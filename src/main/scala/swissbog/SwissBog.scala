@@ -2,6 +2,11 @@
 
 package swissbog
 
+import cats.effect.IO
+import io.circe.KeyDecoder
+import org.http4s.EntityDecoder
+import org.http4s.circe._
+import org.http4s.client.blaze._
 import org.jgrapht.Graph
 import org.jgrapht.alg.cycle.JohnsonSimpleCycles
 import org.jgrapht.graph.DefaultEdge
@@ -10,13 +15,6 @@ import org.jgrapht.graph.SimpleDirectedGraph
 import scala.collection.JavaConverters._
 
 final case class Currency(name: String) extends AnyVal
-
-object Currency {
-  val USD = Currency("USD")
-  val CHF = Currency("CHF")
-  val GBP = Currency("GBP")
-}
-
 final case class Trade(from: Currency, to: Currency, rate: Float)
 
 final case class Arbitrage(exchanges: Vector[Trade]) extends AnyVal {
@@ -25,31 +23,13 @@ final case class Arbitrage(exchanges: Vector[Trade]) extends AnyVal {
 }
 
 object Main {
-  import Currency._
 
   type Rates = Map[(Currency, Currency), Float]
 
   def main(args: Array[String]): Unit = {
-    val rates: Rates = Map(
-      (USD, CHF) -> 1f,
-      (CHF, USD) -> 1.1f,
-      (USD, GBP) -> 0.7f,
-      (GBP, USD) -> 1.25f,
-      (GBP, CHF) -> 1.22f,
-      (CHF, GBP) -> 0.8f
-    )
-    val graph: Graph[Currency, DefaultEdge] = new SimpleDirectedGraph(classOf[DefaultEdge])
-    graph.addVertex(USD)
-    graph.addVertex(CHF)
-    graph.addVertex(GBP)
-    graph.addEdge(USD, CHF)
-    graph.addEdge(CHF, USD)
-    graph.addEdge(USD, GBP)
-    graph.addEdge(GBP, USD)
-    graph.addEdge(GBP, CHF)
-    graph.addEdge(CHF, GBP)
-
-    findArbitrages(graph, rates)
+    val rates: Rates = getRates.unsafeRunSync
+    println(rates)
+    findArbitrages(buildGraph(rates), rates)
       .foreach(println)
   }
 
@@ -94,4 +74,30 @@ object Main {
       val head = ll.headOption.getOrElse(list)
       (head.tail :+ head.head) :: ll
     }
+
+  implicit val currencyDecoder: KeyDecoder[(Currency, Currency)] = new KeyDecoder[(Currency, Currency)] {
+    override def apply(key: String): Option[(Currency, Currency)] = {
+      val Array(from, to) = key.split("_")
+      Some(Currency(from) -> Currency(to))
+    }
+  }
+
+  implicit val ratesDecoder: EntityDecoder[IO, Rates] = jsonOf
+
+  def getRates: IO[Rates] =
+    for {
+      client <- Http1Client[IO]()
+      rates  <- client.expect[Rates]("https://fx.priceonomics.com/v1/rates/")
+    } yield {
+      client.shutdownNow()
+      rates.filterKeys(k => k._1 != k._2)
+    }
+
+  def buildGraph(rates: Rates): Graph[Currency, DefaultEdge] = {
+    val currencies: Set[Currency]           = rates.keys.flatMap(k => Set(k._1, k._2)).toSet
+    val graph: Graph[Currency, DefaultEdge] = new SimpleDirectedGraph(classOf[DefaultEdge])
+    currencies.foreach(graph.addVertex)
+    rates.keys.foreach(k => graph.addEdge(k._1, k._2))
+    graph
+  }
 }

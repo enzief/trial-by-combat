@@ -13,7 +13,7 @@ lazy val root = (project in file("."))
       Circe.core,
       Circe.literal,
       Circe.parser,
-      Http4s.blaze,
+      Http4s.client,
       Http4s.circe,
       Http4s.dsl
     )
