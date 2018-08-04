@@ -3,6 +3,7 @@
 package swissbog
 
 import cats.effect.IO
+import cats.implicits._
 import io.circe.KeyDecoder
 import org.http4s.EntityDecoder
 import org.http4s.circe._
@@ -27,10 +28,17 @@ object Main {
   type Rates = Map[(Currency, Currency), Float]
 
   def main(args: Array[String]): Unit = {
-    val rates: Rates = getRates.unsafeRunSync
-    println(rates)
-    findArbitrages(buildGraph(rates), rates)
-      .foreach(println)
+    val arbitrages: IO[List[Arbitrage]] = for {
+      rates <- getRates
+      graph <- buildGraph(rates)
+      arbs  <- findArbitrages(graph, rates)
+    } yield {
+      arbs
+    }
+    arbitrages.attempt
+      .unsafeRunSync()
+      .leftMap(e => println("Failed with error: " + e.getMessage))
+      .foreach(_.foreach(println))
   }
 
   /**
@@ -46,12 +54,16 @@ object Main {
     * The total number of loops is, unfortunately, possibly exponential. And hence, it may
     * require exponential time to find all arbitrage loops from an input set of data.
     */
-  def findArbitrages(graph: Graph[Currency, DefaultEdge], rates: Rates): List[Arbitrage] =
-    new JohnsonSimpleCycles(graph)
-      .findSimpleCycles()
-      .asScala
-      .toList
-      .flatMap { simpleLoop =>
+  def findArbitrages(graph: Graph[Currency, DefaultEdge], rates: Rates): IO[List[Arbitrage]] =
+    for {
+      cycles <- IO(
+                 new JohnsonSimpleCycles(graph)
+                   .findSimpleCycles()
+                   .asScala
+                   .toList
+               )
+    } yield {
+      cycles.flatMap { simpleLoop =>
         rotate(simpleLoop.asScala.toVector)
           .map { loop =>
             val pairs = (loop :+ loop.head)
@@ -64,6 +76,7 @@ object Main {
           }
           .filter(_.profit > 1)
       }
+    }
 
   /**
     * Rotating a loop has time complexity of O(V) where V is length of the input list
@@ -93,11 +106,12 @@ object Main {
       rates.filterKeys(k => k._1 != k._2)
     }
 
-  def buildGraph(rates: Rates): Graph[Currency, DefaultEdge] = {
-    val currencies: Set[Currency]           = rates.keys.flatMap(k => Set(k._1, k._2)).toSet
-    val graph: Graph[Currency, DefaultEdge] = new SimpleDirectedGraph(classOf[DefaultEdge])
-    currencies.foreach(graph.addVertex)
-    rates.keys.foreach(k => graph.addEdge(k._1, k._2))
-    graph
-  }
+  def buildGraph(rates: Rates): IO[Graph[Currency, DefaultEdge]] =
+    IO {
+      val currencies: Set[Currency]           = rates.keys.flatMap(k => Set(k._1, k._2)).toSet
+      val graph: Graph[Currency, DefaultEdge] = new SimpleDirectedGraph(classOf[DefaultEdge])
+      currencies.foreach(graph.addVertex)
+      rates.keys.foreach(k => graph.addEdge(k._1, k._2))
+      graph
+    }
 }
