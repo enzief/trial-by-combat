@@ -27,8 +27,10 @@ final case class Arbitrage(exchanges: Vector[Trade]) {
 object Main {
   import Currency._
 
+  type Rates = Map[(Currency, Currency), Float]
+
   def main(args: Array[String]): Unit = {
-    val rates: Map[(Currency, Currency), Float] = Map(
+    val rates: Rates = Map(
       (USD, CHF) -> 1f,
       (CHF, USD) -> 1.1f,
       (USD, GBP) -> 0.7f,
@@ -47,7 +49,12 @@ object Main {
     graph.addEdge(GBP, CHF)
     graph.addEdge(CHF, GBP)
 
-    val arbitrades: List[Arbitrage] = new JohnsonSimpleCycles(graph)
+    findArbitrages(graph, rates)
+      .foreach(println)
+  }
+
+  def findArbitrages(graph: Graph[Currency, DefaultEdge], rates: Rates): List[Arbitrage] =
+    new JohnsonSimpleCycles(graph)
       .findSimpleCycles()
       .asScala
       .toList
@@ -57,16 +64,13 @@ object Main {
             val pairs = (loop :+ loop.head)
               .sliding(2)
               .map(s => s.head -> s.tail.head)
-            val trades = pairs.foldLeft(Vector.empty[Trade]) { (arbs, pair) =>
-              arbs ++ rates.get(pair).map(Trade(pair._1, pair._2, _))
+            val trades = pairs.foldLeft(Vector.empty[Trade]) { (trades, pair) =>
+              trades ++ rates.get(pair).map(Trade(pair._1, pair._2, _))
             }
             Arbitrage(trades)
           }
           .filter(_.profit > 1)
       }
-
-    arbitrades.foreach(println)
-  }
 
   def rotate[A](list: List[A]): List[List[A]] =
     list.foldLeft(List.empty[List[A]]) { (ll, _) =>
