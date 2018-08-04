@@ -6,13 +6,14 @@ lazy val root = (project in file("."))
   .settings(
     name := "trial-by-combat",
     libraryDependencies ++= Seq(
+      jgrapht,
       typesafeConfig,
       Cats.core,
       Cats.effect,
       Circe.core,
       Circe.literal,
       Circe.parser,
-      Http4s.blaze,
+      Http4s.client,
       Http4s.circe,
       Http4s.dsl
     )
