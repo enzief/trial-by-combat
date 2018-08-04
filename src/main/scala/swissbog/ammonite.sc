@@ -1,6 +1,12 @@
-// Copyright (c) 2018 Round Inc.. All rights reserved.
-
-package swissbog
+import $ivy.`org.jgrapht:jgrapht-core:1.2.0`
+import $ivy.`org.typelevel::cats-core:1.2.0`
+import $ivy.`org.typelevel::cats-effect:0.10.1`
+import $ivy.`io.circe::circe-generic:0.9.3`
+import $ivy.`io.circe::circe-literal:0.9.3`
+import $ivy.`io.circe::circe-parser:0.9.3`
+import $ivy.`org.http4s::http4s-blaze-client:0.18.15`
+import $ivy.`org.http4s::http4s-circe:0.18.15`
+import $ivy.`org.http4s::http4s-dsl:0.18.15`
 
 import cats.effect.IO
 import cats.implicits._
@@ -28,23 +34,9 @@ final case class Arbitrage(exchanges: Vector[Trade]) extends AnyVal {
   override def toString: String = exchanges.mkString("", " -> ", s" -> $profit")
 }
 
-object Main {
+type Rates = Map[(Currency, Currency), Float]
 
-  type Rates = Map[(Currency, Currency), Float]
-
-  def main(args: Array[String]): Unit = {
-    val arbitrages: IO[List[Arbitrage]] = for {
-      rates <- getRates
-      graph <- buildGraph(rates)
-      arbs  <- findArbitrages(graph, rates)
-    } yield {
-      arbs
-    }
-    arbitrages.attempt
-      .unsafeRunSync()
-      .leftMap(e => println("Failed with error: " + e.getMessage))
-      .foreach(_.foreach(println))
-  }
+object Algebra {
 
   /**
     * According to
@@ -120,3 +112,16 @@ object Main {
       graph
     }
 }
+
+import Algebra._
+
+val rates = getRates.attempt.unsafeRunSync()
+val graph = rates.flatMap(buildGraph(_).attempt.unsafeRunSync())
+val arbitrages =
+  rates.flatMap { r =>
+    graph.flatMap { g =>
+      findArbitrages(g, r).attempt.unsafeRunSync()
+    }
+  }
+
+arbitrages.right.get.foreach(println)
