@@ -17,7 +17,8 @@ object Dependencies {
     val packager: ModuleID           = "com.typesafe.sbt"  % "sbt-native-packager" % "1.3.4"
   }
 
-  val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.3.3"
+  val typesafeConfig: ModuleID = "com.typesafe" % "config"       % "1.3.3"
+  val jgrapht: ModuleID        = "org.jgrapht"  % "jgrapht-core" % "1.2.0"
 
   object Cats {
     val catsVersion: String   = "1.2.0"

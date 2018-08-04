@@ -6,6 +6,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "trial-by-combat",
     libraryDependencies ++= Seq(
+      jgrapht,
       typesafeConfig,
       Cats.core,
       Cats.effect,
