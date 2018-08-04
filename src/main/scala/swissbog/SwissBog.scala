@@ -19,9 +19,9 @@ object Currency {
 
 final case class Trade(from: Currency, to: Currency, rate: Float)
 
-final case class Arbitrage(exchanges: Vector[Trade]) {
+final case class Arbitrage(exchanges: Vector[Trade]) extends AnyVal {
 
-  val profit: Float = exchanges.map(_.rate).reduce(_ * _)
+  def profit: Float = exchanges.map(_.rate).reduce(_ * _)
 }
 
 object Main {
@@ -53,13 +53,26 @@ object Main {
       .foreach(println)
   }
 
+  /**
+    * According to
+    * D. B. Johnson, Finding all the elementary circuits of a directed graph, SIAM J. Comput., 4 (1975), pp. 77-84.,
+    * finding the trading loops for a `Graph[Currency, DefaultEdge]` has time complexity of
+    * O((V + E) * C) where V is the number of currencies and E is the number of rate entries.
+    *
+    * For each loop found, whose size is maximum V, we need O(V) to rotate as described in `rotate` function.
+    * Then for each rotation, O(V * E) is needed to transform it into an `Arbitrage`. Therefore, the total
+    * complexity of one loop transforming is O(V^2 * E).
+    *
+    * The total number of loops is, unfortunately, possibly exponential. And hence, it may
+    * require exponential time to find all arbitrage loops from an input set of data.
+    */
   def findArbitrages(graph: Graph[Currency, DefaultEdge], rates: Rates): List[Arbitrage] =
     new JohnsonSimpleCycles(graph)
       .findSimpleCycles()
       .asScala
       .toList
       .flatMap { simpleLoop =>
-        rotate(simpleLoop.asScala.toList)
+        rotate(simpleLoop.asScala.toVector)
           .map { loop =>
             val pairs = (loop :+ loop.head)
               .sliding(2)
@@ -72,8 +85,12 @@ object Main {
           .filter(_.profit > 1)
       }
 
-  def rotate[A](list: List[A]): List[List[A]] =
-    list.foldLeft(List.empty[List[A]]) { (ll, _) =>
+  /**
+    * Rotating a loop has time complexity of O(V) where V is length of the input list
+    * since appending to a vector and prepending a list is trivial.
+    */
+  def rotate[A](list: Vector[A]): List[Vector[A]] =
+    list.foldLeft(List.empty[Vector[A]]) { (ll, _) =>
       val head = ll.headOption.getOrElse(list)
       (head.tail :+ head.head) :: ll
     }
