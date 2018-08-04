@@ -115,13 +115,12 @@ object Algebra {
 
 import Algebra._
 
-val rates = getRates.attempt.unsafeRunSync()
-val graph = rates.flatMap(buildGraph(_).attempt.unsafeRunSync())
 val arbitrages =
-  rates.flatMap { r =>
-    graph.flatMap { g =>
-      findArbitrages(g, r).attempt.unsafeRunSync()
+  getRates.attempt.unsafeRunSync().flatMap { rates =>
+    buildGraph(rates).attempt.unsafeRunSync().flatMap { graph =>
+      findArbitrages(graph, rates).attempt.unsafeRunSync()
     }
   }
 
-arbitrages.right.get.foreach(println)
+arbitrages.leftMap(e => println("Failed with: " + e.getMessage))
+arbitrages.foreach(_.foreach(println))
