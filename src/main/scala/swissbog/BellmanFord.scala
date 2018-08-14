@@ -17,8 +17,8 @@ object Graph {
   def findLoop(edges: Edges): Option[Vector[Vertex]] =
     for {
       ((src, _), _) <- edges.headOption
-      g             <- buildGraph(src, edges)
-      ls            <- algorithmA(g).orElse(algorithmB(g))
+      g = buildGraph(src, edges)
+      ls <- algorithmA(g).orElse(algorithmB(g))
     } yield ls
 
   /** Finding the first outlier edge needs O(E), plus collecting cyclic
@@ -41,7 +41,7 @@ object Graph {
     val t: Vertex = Currency(1.toString)
     val gs: Edges = graph.edges ++ graph.vertice.map(s -> _ -> 1d)
     val gt: Edges = gs ++ graph.vertice.map(_ -> t -> 1d)
-    buildGraph(s, gt).flatMap(algorithmA)
+    algorithmA(buildGraph(s, gt))
   }
 
   /** Iterates over E edges for (V - 1) times. For each iteration,
@@ -66,19 +66,16 @@ object Graph {
     }
 
   /** Needs O(E) steps to collect the vertice, where E is the number of edges.
-    * Finding the source vertex takes O(V) worst case, and then it takes
-    * additionally O(V) to generate the distance map. In total, `buildGraph`
-    * function needs O(E + 2V) to complete running.
+    * Then it takes additionally O(V) to generate the distance map. In total,
+    * `buildGraph` function needs O(E + V) to complete running.
     */
-  def buildGraph(source: Vertex, edges: Edges): Option[Graph] = {
+  def buildGraph(source: Vertex, edges: Edges): Graph = {
     val vertice: Set[Vertex] = edges.keys.flatMap(k => Set(k._1, k._2)).toSet
-    vertice.find(_ == source).map { _ =>
-      val distance: Distance = vertice.map {
-        case `source` => source -> 0d
-        case x        => x -> Double.PositiveInfinity
-      }.toMap
-      Graph(vertice, edges, distance, Map.empty)
-    }
+    val distance: Distance = vertice.map {
+      case `source` => source -> 0d
+      case x        => x -> Double.PositiveInfinity
+    }.toMap
+    Graph(vertice, edges, distance, Map.empty)
   }
 
   /** Finding the parent vertex from `parent` map can take up to O(V) since
