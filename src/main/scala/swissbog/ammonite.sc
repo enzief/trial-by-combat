@@ -168,10 +168,11 @@ object Algebra {
 import Algebra._
 
 getRates
-  .map(findArbitrages)
   .attempt
   .unsafeRunSync()
   .leftMap(e => "Failed with error: " + e.getMessage)
-  .flatMap(_.toRight("No arbitrage"))
+  .flatMap {
+    findArbitrages(_).toRight("No arbitrage")
+  }
   .leftMap(println)
   .foreach(println)
