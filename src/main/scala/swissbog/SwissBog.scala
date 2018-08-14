@@ -48,7 +48,7 @@ object Main {
     * complexity of arbitrage finding is O(EV^2).
     */
   def findArbitrages(rates: Rates): Option[Arbitrage] =
-    Graph.findLoop(rates.mapValues(-math.log(_))).map { loop =>
+    Graph.findNegativeCycle(rates.mapValues(-math.log(_))).map { loop =>
       val pairs = loop
         .sliding(2)
         .map(s => s.head -> s.tail.head)
