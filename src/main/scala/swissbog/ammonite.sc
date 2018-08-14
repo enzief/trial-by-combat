@@ -128,6 +128,11 @@ object Graph {
 object Algebra {
 
   /**
+    * An implementation of:
+    * https://math.stackexchange.com/questions/94414/an-algorithm-for-arbitrage-in-currency-exchange
+    *  and
+    * http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.86.1981&rep=rep1&type=pdf
+    *
     * Finding a trading loop has time complexity of O(EV^2) where V is the number of currencies
     * and E is the number of rate entries.
     * Then for the loop, O(EV) is needed to transform it into an `Arbitrage`. Therefore, the total

@@ -21,7 +21,6 @@ object Graph {
       ls            <- algorithmA(g).orElse(algorithmB(g))
     } yield ls
 
-
   /** Finding the first outlier edge needs O(E), plus collecting cyclic
     * vertice complexity O(V^2/2). All are superseded by O(EV^2) of the
     * Bellman-Ford run.
